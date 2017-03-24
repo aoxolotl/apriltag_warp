@@ -17,12 +17,12 @@ def getRotationMat(H, fx, fy):
     M[0][3] = H[0][2] / fx
     M[1][0] = H[1][0] / fy
     M[1][1] = H[1][1] / fy
-    M[1][3] = H[1][1] / fy
+    M[1][3] = H[1][2] / fy
     M[2][0] = H[2][0]
     M[2][1] = H[2][1]
     M[2][3] = H[2][2]
 
-    sf1 = math.sqrt(sq(M[0][0]) + sq(M[1][0] / fy) + sq(M[2][0]));
+    sf1 = math.sqrt(sq(M[0][0]) + sq(M[1][0]) + sq(M[2][0]));
 
     sf2 = math.sqrt(sq(M[0][1]) + sq(M[1][1]) + sq(M[2][1]));
 
@@ -48,7 +48,7 @@ def getRotationMat(H, fx, fy):
     U, s, V = np.linalg.svd(R)
     MR = np.dot(U, V)
 
-    return np.dot(MR, F)
+    return np.dot(F, MR)
 
 # Main script
 im = cv2.imread(sys.argv[1])
@@ -87,24 +87,41 @@ Tr = np.array([[1, 0, -tag_center[0]], [0, 1, -tag_center[1]], [0, 0, 1]])
 
 Hinv = np.linalg.inv(H)
 
+R = getRotationMat(H, 249, 249)
+R3d = np.eye(4, 4)
+for i in range(3):
+    for j in range(3):
+        R3d[i][j] = R[i][j]
+
 H = np.dot(H, Sc)
 H = np.dot(H, Tr)
 
 #Hinv = np.dot(Tr, Hinv)
 #Hinv = np.dot(np.linalg.inv(Sc), Hinv)
 
-warp_im = cv2.warpPerspective(im, H, (imwidth, imheight), flags=cv2.WARP_INVERSE_MAP)
+#warp_im = cv2.warpPerspective(im, H, (imwidth, imheight), flags=cv2.WARP_INVERSE_MAP)
 
-# Rotation matrix
-R = getRotationMat(H, 762, 771)
+# Projection Matrix 
+P = np.array([
+    [1, 0, -1.6315e+03],
+    [0, 1, -1.2235e+03],
+    [0, 0, 0],
+    [0, 0, 1]
+    ])
+
 # Camera Matrix K
-K = np.array([[2.4974e+03, 0., 1.6315e+03],
-            [0., 2.4974e+03, 1.2235e+03],
-            [0., 0., 1.]])
-# Rotate image by KRKe-1
-#Rfinal = np.dot(K, R)
-#Rfinal = np.dot(Rfinal, np.linalg.inv(K))
-#warp_im2 = cv2.warpPerspective(im, Rfinal, (2 * imwidth, 2 * imheight), flags=cv2.WARP_INVERSE_MAP)
+K = np.array([
+    [2.4974e+03,        0., 1.6315e+03],
+    [0.,        2.4974e+03, 1.2235e+03],
+    [0.,                0.,         1.]
+    ])
 
-cv2.imwrite(sys.argv[5], warp_im)
-#cv2.imwrite('warp_im2.png', warp_im2)
+# Final transformation matrix
+#trans = np.dot(R3d, P)
+#trans = np.dot(K, trans)
+Rfinal = np.dot(R, np.linalg.inv(K))
+Rfinal = np.dot(K, Rfinal)
+warp_im2 = cv2.warpPerspective(im, Rfinal, (imwidth, imheight), flags=cv2.WARP_INVERSE_MAP)
+
+#cv2.imwrite(sys.argv[5], warp_im)
+cv2.imwrite('warp_im2.png', warp_im2)

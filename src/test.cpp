@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 //void apriltag_init(apriltag_detector *td, apriltag_family *tf,
 //	float decimate, float blur, int num_threads, 
 //	int debug, int ref_edg, int ref_dec, int ref_pose)  
-	apriltag_init(td, tf,  1.0f, 0.0f, 4, 1, 0, 0, 0);
+	apriltag_init(td, tf,  1.0f, 0.0f, 4, 0, 0, 0, 0);
 
 	image_u8_t *im = image_u8_create_from_pnm(argv[1]);
 
@@ -78,39 +78,6 @@ int main(int argc, char **argv)
 		   cv::warpPerspective(image, warp_im, R, image.size());
 
 		   cv::imwrite("warp_im.png", warp_im);
-		/*
-
-		double slope1 = (det->p[0][1] - det->p[1][1]) / (((det->p[0][0] - det->p[1][0]) != 0) ? (det->p[0][0] - det->p[1][0]) : EPS);
-		double slope2 = (det->p[2][1] - det->p[3][1]) / (((det->p[2][0] - det->p[3][0]) != 0) ? (det->p[2][0] - det->p[3][0]) : EPS);
-		double slope3 = (det->p[0][1] - det->p[3][1]) / (((det->p[0][0] - det->p[3][0]) != 0) ? (det->p[0][0] - det->p[3][0]) : EPS);
-		double slope4 = (det->p[2][1] - det->p[1][1]) / (((det->p[2][0] - det->p[1][0]) != 0) ? (det->p[2][0] - det->p[1][0]) : EPS);
-
-		double vpx_h = det->p[2][1] - det->p[0][1] + (slope1 * det->p[0][0]) - (slope2 * det->p[2][0]);
-		vpx_h /= (slope1 - slope2);
-		double vpy_h = (slope1 * (vpx_h - det->p[0][0])) + det->p[0][1];
-
-		double vpx_v = det->p[2][1] - det->p[0][1] + (slope3 * det->p[0][0]) - (slope4 * det->p[2][0]);
-		vpx_v /= (slope3 - slope4);
-		double vpy_v = (slope3 * (vpx_v - det->p[0][0])) + det->p[0][1];
-
-		printf("H: %lf, %lf V:%lf, %lf\n", vpx_h, vpy_h, vpx_v, vpy_v);
-
-		cv::namedWindow("Crop");
-		cv::Point crop_pts[2];
-		crop_pts[0].x = det->p[0][0];
-		crop_pts[0].y = det->p[0][1];
-		crop_pts[1].x = 2800;
-		crop_pts[1].y = 2100;
-		//// Lines from vanishing points to top-left and bottom-right corner
-		
-		int colour_change = d * 70 + 70;
-		
-		cv::line(image, cv::Point((int ) round(vpx_h), (int ) round(vpy_h)), crop_pts[0], cv::Scalar(0, colour_change, colour_change), 3);
-		cv::line(image, cv::Point((int ) round(vpx_h), (int ) round(vpy_h)), crop_pts[1], cv::Scalar(0, colour_change, colour_change), 3);
-		//cv::line(image, cv::Point((int ) round(vpx_v), (int ) round(vpy_v)), crop_pts[0], cv::Scalar(0, 255, 255), 3);
-		//cv::line(image, cv::Point((int ) round(vpx_v), (int ) round(vpy_v)), crop_pts[1], cv::Scalar(255, 255, 0), 3);
-		cv::imwrite("Crop.png", image);
-		*/
 	//}
 
 	return 0;

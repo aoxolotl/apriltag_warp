@@ -94,7 +94,6 @@ H = np.dot(H, Tr)
 #Hinv = np.dot(np.linalg.inv(Sc), Hinv)
 
 warp_im = cv2.warpPerspective(im, H, (imwidth, imheight), flags=cv2.WARP_INVERSE_MAP)
-#warp_im = cv2.warpPerspective(im, Hinv, (imwidth, imheight))#, flags=cv2.WARP_INVERSE_MAP)
 
 # Rotation matrix
 R = getRotationMat(H, 762, 771)
@@ -107,18 +106,5 @@ K = np.array([[2.4974e+03, 0., 1.6315e+03],
 #Rfinal = np.dot(Rfinal, np.linalg.inv(K))
 #warp_im2 = cv2.warpPerspective(im, Rfinal, (2 * imwidth, 2 * imheight), flags=cv2.WARP_INVERSE_MAP)
 
-#for j in range(imheight):
-#    for i in range(imwidth):
-#        x = np.dot(Hinv, [i, j, 1])
-#        x = x / x[2]
-#        # Multiply by scale and translate to center of apriltag
-#        x[0] = (x[0] * sx)# + tag_center[0]
-#        x[1] = (x[1] * sy)# + tag_center[1]
-#        x = x.astype(int)
-#        if (x[0] > 0) and (x[1] > 0) and (x[0] < imwidth) and (x[1] < imheight):
-#            warp_im[x[1]][x[0]] = im[j][i]
-#
-#imclr = cv2.imread('src_157.jpg')
-#warp_im = cv2.warpPerspective(im, R, (imwidth, imheight))
 cv2.imwrite(sys.argv[5], warp_im)
 #cv2.imwrite('warp_im2.png', warp_im2)

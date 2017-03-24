@@ -48,6 +48,10 @@ def getRotationMat(H, fx, fy):
     U, s, V = np.linalg.svd(R)
     MR = np.dot(U, V)
 
+    for i in range(3):
+        for j in range(3):
+            M[i][j] = MR[i][j]
+ 
     return np.dot(F, MR)
 
 # Main script
@@ -87,12 +91,6 @@ Tr = np.array([[1, 0, -tag_center[0]], [0, 1, -tag_center[1]], [0, 0, 1]])
 
 Hinv = np.linalg.inv(H)
 
-R = getRotationMat(H, 249, 249)
-R3d = np.eye(4, 4)
-for i in range(3):
-    for j in range(3):
-        R3d[i][j] = R[i][j]
-
 H = np.dot(H, Sc)
 H = np.dot(H, Tr)
 
@@ -103,25 +101,38 @@ H = np.dot(H, Tr)
 
 # Projection Matrix 
 P = np.array([
-    [1, 0, -1.6315e+03],
-    [0, 1, -1.2235e+03],
-    [0, 0, 0],
+    [1, 0, -1.632e+03],
+    [0, 1, -1.224e+03],
+    [0, 0, 1],
     [0, 0, 1]
     ])
 
+# Rotation Matrix
+R = getRotationMat(H, 249, 249)
+print "ang_x", math.atan2(R[2][1], R[2][2]) * 180 / math.pi
+print "ang_y", math.atan2(-R[2][0], math.sqrt(sq(R[0][0]) + sq(R[1][0]))) * 180/ math.pi
+print "ang_z", math.atan2(R[1][0], R[0][0]) * 180/ math.pi
+
+R3d = np.eye(4, 4)
+for i in range(3):
+    for j in range(3):
+        R3d[i][j] = R[i][j]
+
+
 # Camera Matrix K
 K = np.array([
-    [2.4974e+03,        0., 1.6315e+03],
-    [0.,        2.4974e+03, 1.2235e+03],
-    [0.,                0.,         1.]
+    [2.4974e+03,        0.,  0, 1.6315e+03],
+    [0.,        2.4974e+03,  0, 1.2235e+03],
+    [0.,                0.,  0,         1.]
     ])
 
 # Final transformation matrix
-#trans = np.dot(R3d, P)
-#trans = np.dot(K, trans)
-Rfinal = np.dot(R, np.linalg.inv(K))
-Rfinal = np.dot(K, Rfinal)
-warp_im2 = cv2.warpPerspective(im, Rfinal, (imwidth, imheight), flags=cv2.WARP_INVERSE_MAP)
+trans = np.dot(R3d, P)
+trans = np.dot(K, trans)
+#Rfinal = np.dot(R, np.linalg.inv(K))
+#Rfinal = np.dot(K, Rfinal)
+print trans
+warp_im2 = cv2.warpPerspective(im, trans, (imwidth, imheight), flags=cv2.WARP_INVERSE_MAP)
 
 #cv2.imwrite(sys.argv[5], warp_im)
 cv2.imwrite('warp_im2.png', warp_im2)

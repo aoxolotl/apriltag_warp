@@ -6,6 +6,7 @@ import math
 def sq(x):
     return x * x
 
+# Refer: https://github.com/swatbotics/apriltags-cpp/blob/master/src/CameraUtil.cpp#L68
 def getRotationMat(H, fx, fy):
     # Flip Homography for convention sake
     F = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
@@ -82,9 +83,8 @@ fy = 771
 # warp_im = np.zeros(im.shape)
 
 # x and y scale factors
-sx = tag_width / 2.0
-sy = tag_height / 2.0
-
+sx = tag_width / 2.0 
+sy = tag_height / 2.0 
 #Scale matrix
 Sc = np.array([[1/sx, 0, 0],[0, 1/sy, 0], [0, 0, 1]])
 Tr = np.array([[1, 0, -tag_center[0]], [0, 1, -tag_center[1]], [0, 0, 1]])
@@ -107,6 +107,7 @@ P = np.array([
     [0, 0, 1]
     ])
 
+# Refer: https://jepsonsblog.blogspot.in/2012/11/rotation-in-3d-using-opencvs.html
 # Rotation Matrix
 R = getRotationMat(H, 249, 249)
 print "ang_x", math.atan2(R[2][1], R[2][2]) * 180 / math.pi
@@ -127,11 +128,14 @@ K = np.array([
     ])
 
 # Final transformation matrix
-trans = np.dot(R3d, P)
-trans = np.dot(K, trans)
+#trans = np.dot(R3d, P)
+#trans = np.dot(K, trans)
 #Rfinal = np.dot(R, np.linalg.inv(K))
 #Rfinal = np.dot(K, Rfinal)
-print trans
+trans = np.array([
+    [2.368, 0.0887, -537],
+    [0.416, 1.764, -842.0],
+    [0, 0, 1]])
 warp_im2 = cv2.warpPerspective(im, trans, (imwidth, imheight), flags=cv2.WARP_INVERSE_MAP)
 
 #cv2.imwrite(sys.argv[5], warp_im)

@@ -1,5 +1,6 @@
 #include "apriltag/apriltag.h"
 #include "apriltag_utils.h"
+#include "warpImage.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
@@ -33,7 +34,10 @@ int main(int argc, char **argv)
 	cv::Mat image = cv::imread(argv[1]);
 	
 	if(!zarray_size(detections))
+	{
 		printf("Not detected\n");
+		return -1;
+	}
 
 	//for(int d = 0 ; d < zarray_size(detections); ++d)
 	//{
@@ -52,33 +56,41 @@ int main(int argc, char **argv)
 
 		getExtrinsics(det, 762, 771, rot, trans);
 
+		for(int i = 0; i < 9; ++i)
+		fprintf(fp, "%lf ", det->H->data[i]);
+		fprintf(fp, "\n");
+		fclose(fp);
 
-		// Rotation matrix
-		cv::Mat R = cv::Mat(3, 3, CV_32F, rot);
-                double ang_x, ang_y, ang_z;
-
-                getEulerAngles(rot, &ang_x, &ang_y, &ang_z);
-                ang_x = ang_x * 180 / 3.1416;
-                ang_y = ang_y * 180 / 3.1416;
-                ang_z = ang_z * 180 / 3.1416;
-                printf("Angles: %lf, %lf, %lf\n", ang_x, ang_y, ang_z);
-
-		
-		   for(int i = 0; i < 9; ++i)
-		   fprintf(fp, "%lf ", det->H->data[i]);
-		   fprintf(fp, "\n");
-		   fclose(fp);
-
-		   for(int i = 0; i < 4; ++i)
-		   fprintf(fp3, "%lf %lf ", det->p[i][0], det->p[i][1]);
-		   fprintf(fp3, "\n");
-		   fclose(fp3);
-
-		   cv::Mat warp_im = cv::Mat::zeros(image.size(), CV_32F);
-		   cv::warpPerspective(image, warp_im, R, image.size());
-
-		   cv::imwrite("warp_im.png", warp_im);
+		for(int i = 0; i < 4; ++i)
+		fprintf(fp3, "%lf %lf ", det->p[i][0], det->p[i][1]);
+		fprintf(fp3, "\n");
+		fclose(fp3);
 	//}
+
+	cv::Mat R = cv::Mat(3, 3, CV_32F, rot);
+
+        double ang_x, ang_y, ang_z;
+
+        getEulerAngles(rot, &ang_x, &ang_y, &ang_z);
+        ang_x = ang_x * 180 / 3.1416;
+        ang_y = ang_y * 180 / 3.1416;
+        ang_z = ang_z * 180 / 3.1416;
+        printf("Angles: %lf, %lf, %lf\n", ang_x, ang_y, ang_z);
+
+	cv::Mat warp_im = cv::Mat::zeros(image.size(), CV_32F);
+        cv::Mat M = cv::Mat::eye(4, 4, CV_32F);
+        std::vector<cv::Point2f> corners;
+        warpImage(image, 0, 0, -60,
+                1.0, 24, warp_im, M, corners);
+
+	// Camera intrinsics
+	double k[9] = {249, 0, 1632, 0, 249, 1223, 0, 0, 1};
+	cv::Mat K = cv::Mat(3, 3, CV_32F, k);
+	
+	//cv::Mat T = K.inv() * R * K;
+	//cv::warpPerspective(image, warp_im, T, image.size());
+	//
+	cv::imwrite("warp_im.png", warp_im);
 
 	return 0;
 }

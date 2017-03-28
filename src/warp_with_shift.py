@@ -91,8 +91,11 @@ Tr = np.array([[1, 0, -tag_center[0]], [0, 1, -tag_center[1]], [0, 0, 1]])
 
 Hinv = np.linalg.inv(H)
 
+print H
 H = np.dot(H, Sc)
 H = np.dot(H, Tr)
+
+print H
 
 #Hinv = np.dot(Tr, Hinv)
 #Hinv = np.dot(np.linalg.inv(Sc), Hinv)

@@ -57,3 +57,4 @@ void getEulerAngles(double *r, double *ang_x, double *ang_y, double *ang_z)
 	*ang_y = atan2(-r[6], sqrt(SQ(r[0]) + SQ(r[3])));
 	*ang_z = atan2(r[3], r[0]);
 }
+

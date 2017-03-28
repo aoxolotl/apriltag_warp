@@ -26,11 +26,22 @@ int main(int argc, char **argv)
 //	int debug, int ref_edg, int ref_dec, int ref_pose)  
 	apriltag_init(td, tf,  1.0f, 0.0f, 4, 0, 0, 0, 0);
 
-	// TODO: Directly read from Mat
-	image_u8_t *im = image_u8_create_from_pnm(argv[1]);
+	// Load colour image
+	cv::Mat image = cv::imread(argv[1]);
+	
+	// Grayscale for apriltag
+	cv::Mat grayim;
+   	cv::cvtColor(image, grayim, cv::COLOR_BGR2GRAY);
 
-	// Detect
-	zarray_t *detections = apriltag_detector_detect(td, im);
+	// Refer: https://github.com/openmv/apriltag/blob/master/example/opencv_demo.cc#L114 
+	image_u8_t im = {
+		.width =	grayim.cols,
+		.height =	grayim.rows,
+		.stride =	grayim.cols,
+		.buf = 		grayim.data};
+
+	// Detect apriltag
+	zarray_t *detections = apriltag_detector_detect(td, &im);
 	if(!zarray_size(detections))
 	{
 		printf("Not detected\n");
@@ -42,39 +53,46 @@ int main(int argc, char **argv)
 
 	// Convert homography to Mat for warpPerspective
 	cv::Mat H = cv::Mat(3, 3, CV_64F, det->H->data);
-	double t[9] = {1, 0, -det->c[0],
-			 0, 1, -det->c[1],
-			 0, 0, 			1};
+
+	double t[9] = {
+		1, 0,	-det->c[0],
+		0, 1,	-det->c[1],
+		0, 0,	1};
 	cv::Mat Tr = cv::Mat(3,3, CV_64F, t); /**< Translation mat to get the H in image frame**/
 	
 	double sx = abs(det->p[0][0] - det->p[1][0]) / 2;
 	double sy = abs(det->p[0][1] - det->p[2][1]) / 2;
-	double s[9] = {1/sx, 0, 0,
-					 0, 1/sy, 0,
-					 0, 0, 1};
+	double s[9] = {
+		1/sx,	0, 		0,
+		0,		1/sy, 	0,
+		0, 		0, 		1};
 	cv::Mat Sc = cv::Mat(3, 3, CV_64F, s); /**< Scale factor to keep it in image scale**/
 
 	H = H * Sc;
 	H = H * Tr;
 
-	// Image for warping
-	cv::Mat image = cv::imread(argv[1]);
+	// Warp image
 	cv::Mat warp_im = cv::Mat::zeros(image.size(), image.type());
-
 	cv::warpPerspective(image, warp_im, H, image.size(), cv::WARP_INVERSE_MAP);
 	
-	cv::imwrite("warp_im.pgm", warp_im);
-	
 	// Detect apriltag again for measurements
-	im = image_u8_create_from_pnm("warp_im.pgm");
-	detections = apriltag_detector_detect(td, im);
+   	cv::cvtColor(warp_im, grayim, cv::COLOR_BGR2GRAY);
+	image_u8_t im2 = {
+		.width =	grayim.cols,
+		.height =	grayim.rows,
+		.stride =	grayim.cols,
+		.buf = 		grayim.data};
+
+	detections = apriltag_detector_detect(td, &im2);
 	zarray_get(detections, 0, &det);
 
 	// Measurement scale in x and y
 	double meas_x = AT_WIDTH / fabs(det->p[0][0] - det->p[1][0]);
 	double meas_y = AT_HEIGHT / fabs(det->p[0][1] - det->p[2][1]); 
-
 	printf("m_x:%lf, m_y:%lf\n", meas_x, meas_y);
+
+	//Write out warped image
+	cv::imwrite("warp_im.png", warp_im);
 
 	return 0;
 }

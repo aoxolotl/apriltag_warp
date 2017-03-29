@@ -9,6 +9,94 @@
 #define AT_WIDTH 26
 #define AT_HEIGHT 26
 
+int transformTool(cv::Mat source)
+{
+	int alpha_=90., beta_=90., gamma_=90.;
+	int f_ = 500, dist_ = 500;
+	
+	cv::Mat destination;
+	
+	std::string wndname1 = "Source: ";
+	std::string wndname2 = "WarpPerspective: ";
+	std::string tbarname1 = "Alpha";
+	std::string tbarname2 = "Beta";
+	std::string tbarname3 = "Gamma";
+	std::string tbarname4 = "f";
+	std::string tbarname5 = "Distance";
+	cv::namedWindow(wndname1, 1);
+	cv::namedWindow(wndname2, 1);
+	cv::createTrackbar(tbarname1, wndname2, &alpha_, 180);
+	cv::createTrackbar(tbarname2, wndname2, &beta_, 180);
+	cv::createTrackbar(tbarname3, wndname2, &gamma_, 180);
+	cv::createTrackbar(tbarname4, wndname2, &f_, 2000);
+	cv::createTrackbar(tbarname5, wndname2, &dist_, 2000);
+	
+	cv::imshow(wndname1, source);
+	while(true) {
+	    double f, dist;
+	    double alpha, beta, gamma;
+	    alpha = ((double)alpha_ - 90.) * 3.1416/180;
+	    beta = ((double)beta_ - 90.) * 3.1416/180;
+	    gamma = ((double)gamma_ - 90.) * 3.1416/180;
+	    f = (double) f_;
+	    dist = (double) dist_;
+	
+		cv::Size taille = source.size();
+	    double w = (double)taille.width, h = (double)taille.height;
+	
+	    // Projection 2D -> 3D matrix
+		cv::Mat A1 = (cv::Mat_<double>(4,3) <<
+	        1, 0, -w/2,
+	        0, 1, -h/2,
+	        0, 0,    0,
+	        0, 0,    1);
+	
+	    // Rotation matrices around the X,Y,Z axis
+		cv::Mat RX = (cv::Mat_<double>(4, 4) <<
+	        1,          0,           0, 0,
+	        0, cos(alpha), -sin(alpha), 0,
+	        0, sin(alpha),  cos(alpha), 0,
+	        0,          0,           0, 1);
+	
+		cv::Mat RY = (cv::Mat_<double>(4, 4) <<
+	        cos(beta), 0, -sin(beta), 0,
+	                0, 1,          0, 0,
+	        sin(beta), 0,  cos(beta), 0,
+	                0, 0,          0, 1);
+	
+		cv::Mat RZ = (cv::Mat_<double>(4, 4) <<
+	        cos(gamma), -sin(gamma), 0, 0,
+	        sin(gamma),  cos(gamma), 0, 0,
+	        0,          0,           1, 0,
+	        0,          0,           0, 1);
+	
+	    // Composed rotation matrix with (RX,RY,RZ)
+		cv::Mat R = RX * RY * RZ;
+	
+	    // Translation matrix on the Z axis change dist will change the height
+	    cv::Mat T = (cv::Mat_<double>(4, 4) <<
+	        1, 0, 0, 0,
+	        0, 1, 0, 0,
+	        0, 0, 1, dist,
+	        0, 0, 0, 1);
+	
+	    // Camera Intrisecs matrix 3D -> 2D
+	    cv::Mat A2 = (cv::Mat_<double>(3,4) <<
+	        f, 0, w/2, 0,
+	        0, f, h/2, 0,
+	        0, 0,   1, 0);
+	
+	    // Final and overall transformation matrix
+	    cv::Mat transfo = A2 * (T * (R * A1));
+	
+	    // Apply matrix transformation
+		cv::warpPerspective(source, destination, transfo, taille, cv::INTER_CUBIC | cv::WARP_INVERSE_MAP);
+	
+		cv::imshow(wndname2, destination);
+		cv::waitKey(30);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	if(argc < 2)
@@ -93,6 +181,8 @@ int main(int argc, char **argv)
 
 	//Write out warped image
 	cv::imwrite("warp_im.png", warp_im);
+
+	transformTool(image);
 
 	return 0;
 }

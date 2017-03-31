@@ -1,4 +1,5 @@
 #include "apriltag_utils.h"
+#include <opencv2/opencv.hpp>
 #include <math.h>
 #define SQ(a) (a * a)
 
@@ -16,40 +17,92 @@ void apriltag_init(apriltag_detector *td, apriltag_family *tf,
     td->refine_pose = ref_pose;
 }
 
-void getExtrinsics(apriltag_detection *det, double fx, double fy,
-					double *rot, double *trans)
+// Refer: https://github.com/swatbotics/apriltags-cpp/blob/master/src/CameraUtil.cpp#L68
+cv::Mat getExtrinsics(apriltag_detection *det, double fx, double fy,
+		double tagSize)
 {
-	double *homography = det->H->data;
+	cv::Mat_<double> h = cv::Mat(3, 3, CV_64F, det->H->data);
+	cv::Mat_<double> F = cv::Mat::eye(3, 3, CV_64F);
+	F(1,1) = F(2,2) = -1;
+	h = F * h;
+	std::cout << "tagSize" << tagSize << std::endl;
+	
+	bool openGLStyle = false;
 
-	double scale_factor, sf1, sf2;
+	cv::Mat_<double> M(4,4);
+	M(0,0) =  h(0,0) / fx;
+	M(0,1) =  h(0,1) / fx;
+	M(0,3) =  h(0,2) / fx;
+	M(1,0) =  h(1,0) / fy;
+	M(1,1) =  h(1,1) / fy;
+	M(1,3) =  h(1,2) / fy;
+	M(2,0) =  h(2,0);
+	M(2,1) =  h(2,1);
+	M(2,3) =  h(2,2);
 
-	sf1 = sqrt(SQ(homography[0] / fx) 
-				+ SQ(homography[3] / fy)
-				+ SQ(homography[6]));
+	// Compute the scale. The columns of M should be made to be
+	// unit vectors. This is over-determined, so we take the
+	// geometric average.
+	double scale0 = sqrt(SQ(M(0,0)) + SQ(M(1,0)) + SQ(M(2,0)));
+	double scale1 = sqrt(SQ(M(0,1)) + SQ(M(1,1)) + SQ(M(2,1)));
+	double scale = sqrt(scale0*scale1);
 
+	M *= 1.0/scale;
 
-	sf2 = sqrt(SQ(homography[1] / fx) 
-				+ SQ(homography[4] / fy)
-				+ SQ(homography[7]));
+	// recover sign of scale factor by noting that observations must
+	// occur in front of the camera.
+	if (M(2,3) > 0) {
+		M *= -1;
+	}
 
-	scale_factor = sqrt(sf1 * sf2);
+	// The bottom row should always be [0 0 0 1].  
+	M(3,0) = 0;
+	M(3,1) = 0;
+	M(3,2) = 0;
+	M(3,3) = 1;
 
-	rot[0] = homography[0] / (scale_factor * fx);
-	rot[1] = homography[3] / (scale_factor * fy);
-	rot[2] = homography[6] / scale_factor;
+	// recover third rotation vector by crossproduct of the other two
+	// rotation vectors
+	cv::Vec<double, 3> a( M(0,0), M(1,0), M(2,0) );
+	cv::Vec<double, 3> b( M(0,1), M(1,1), M(2,1) );
+	cv::Vec<double, 3> ab = a.cross(b);
 
-	rot[3] = homography[1] / (scale_factor * fx);
-	rot[4] = homography[4] / (scale_factor * fy);
-	rot[5] = homography[7] / scale_factor;
+	M(0,2) = ab[0];
+	M(1,2) = ab[1];
+	M(2,2) = ab[2];
 
-	rot[6] = rot[1] * rot[5] - (rot[4] * rot[2]);
-	rot[7] = rot[3] * rot[2] - (rot[0] * rot[5]);
-	rot[8] = rot[0] * rot[4] - (rot[3] * rot[1]);
+	// pull out just the rotation component so we can normalize it.
 
-	trans[0] = homography[2] / (scale_factor * fx);
-	trans[1] = homography[5] / (scale_factor * fy);
-	trans[2] = homography[8] / scale_factor;
-}
+	cv::Mat_<double> R(3,3);
+	for (int i=0; i<3; ++i) {
+		for (int j=0; j<3; ++j) {
+			R(i,j) = M(i,j);
+		}
+	}
+
+	// polar decomposition, R = (UV')(VSV')
+
+	cv::SVD svd(R);
+	cv::Mat_<double> MR = svd.u * svd.vt;
+
+	if (!openGLStyle) { MR = F * MR; }
+
+	for (int i=0; i<3; ++i) {
+		for (int j=0; j<3; ++j) {
+			M(i,j) = MR(i,j);
+		}
+	}
+
+	// Scale the results based on the scale in the homography. The
+	// homography assumes that tags span from -1 to +1, i.e., that
+	// they are two units wide (and tall).
+	for (int i = 0; i < 3; i++) {
+		double scl = openGLStyle ? 1 : F(i,i);
+		M(i,3) *= scl * tagSize / 2;
+	}
+
+	return M;
+}    
 
 void getEulerAngles(double *r, double *ang_x, double *ang_y, double *ang_z)
 {

@@ -86,7 +86,7 @@ fy = 771
 sx = tag_width / 2.0 
 sy = tag_height / 2.0 
 #Scale matrix
-Sc = np.array([[1/sx, 0, 0],[0, 1/sy, 0], [0, 0, 1]])
+Sc = np.array([[1/sx, 0, 0], [0, 1/sy, 0], [0, 0, 1]])
 Tr = np.array([[1, 0, -tag_center[0]], [0, 1, -tag_center[1]], [0, 0, 1]])
 
 Hinv = np.linalg.inv(H)

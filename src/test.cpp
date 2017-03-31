@@ -9,7 +9,7 @@
 #define AT_WIDTH 26
 #define AT_HEIGHT 26
 
-int transformTool(cv::Mat source)
+int transformTool(cv::Mat source, cv::Mat R1)
 {
 	int alpha_=90., beta_=90., gamma_=90.;
 	int f_ = 500, dist_ = 500;
@@ -23,8 +23,8 @@ int transformTool(cv::Mat source)
 	std::string tbarname3 = "Gamma";
 	std::string tbarname4 = "f";
 	std::string tbarname5 = "Distance";
-	cv::namedWindow(wndname1, 1);
-	cv::namedWindow(wndname2, 1);
+	cv::namedWindow(wndname1, CV_WINDOW_NORMAL);
+	cv::namedWindow(wndname2, CV_WINDOW_NORMAL);
 	cv::createTrackbar(tbarname1, wndname2, &alpha_, 180);
 	cv::createTrackbar(tbarname2, wndname2, &beta_, 180);
 	cv::createTrackbar(tbarname3, wndname2, &gamma_, 180);
@@ -32,6 +32,8 @@ int transformTool(cv::Mat source)
 	cv::createTrackbar(tbarname5, wndname2, &dist_, 2000);
 	
 	cv::imshow(wndname1, source);
+	cv::resizeWindow(wndname1, 800, 400);
+	cv::resizeWindow(wndname2, 800, 400);
 	while(true) {
 	    double f, dist;
 	    double alpha, beta, gamma;
@@ -87,7 +89,9 @@ int transformTool(cv::Mat source)
 	        0, 0,   1, 0);
 	
 	    // Final and overall transformation matrix
-	    cv::Mat transfo = A2 * (T * (R * A1));
+		std::cout << "R" << R << std::endl;
+		std::cout << "R1" << R1 << std::endl;
+		cv::Mat transfo = A2 * (T * (R * A1));
 	
 	    // Apply matrix transformation
 		cv::warpPerspective(source, destination, transfo, taille, cv::INTER_CUBIC | cv::WARP_INVERSE_MAP);
@@ -139,6 +143,8 @@ int main(int argc, char **argv)
 	apriltag_detection_t *det;
 	zarray_get(detections, 0, &det);
 
+	//Angles
+
 	// Convert homography to Mat for warpPerspective
 	cv::Mat H = cv::Mat(3, 3, CV_64F, det->H->data);
 
@@ -148,8 +154,8 @@ int main(int argc, char **argv)
 		0, 0,	1};
 	cv::Mat Tr = cv::Mat(3,3, CV_64F, t); /**< Translation mat to get the H in image frame**/
 	
-	double sx = abs(det->p[0][0] - det->p[1][0]) / 2;
-	double sy = abs(det->p[0][1] - det->p[2][1]) / 2;
+	double sx = fabs(det->p[0][0] - det->p[1][0]) / 2;
+	double sy = fabs(det->p[0][1] - det->p[2][1]) / 2;
 	double s[9] = {
 		1/sx,	0, 		0,
 		0,		1/sy, 	0,
@@ -162,6 +168,7 @@ int main(int argc, char **argv)
 	// Warp image
 	cv::Mat warp_im = cv::Mat::zeros(image.size(), image.type());
 	cv::warpPerspective(image, warp_im, H, image.size(), cv::WARP_INVERSE_MAP);
+	cv::imwrite("warp_im.png", warp_im);
 	
 	// Detect apriltag again for measurements
    	cv::cvtColor(warp_im, grayim, cv::COLOR_BGR2GRAY);
@@ -172,6 +179,11 @@ int main(int argc, char **argv)
 		.buf = 		grayim.data};
 
 	detections = apriltag_detector_detect(td, &im2);
+	if(!zarray_size(detections))
+	{
+		printf("Not detected in warped\n");
+		return -1;
+	}
 	zarray_get(detections, 0, &det);
 
 	// Measurement scale in x and y
@@ -180,9 +192,18 @@ int main(int argc, char **argv)
 	printf("m_x:%lf, m_y:%lf\n", meas_x, meas_y);
 
 	//Write out warped image
-	cv::imwrite("warp_im.png", warp_im);
 
-	transformTool(image);
+	cv::Mat M = getExtrinsics(det, 1600, 1200, fabs(det->p[0][0] - det->p[1][0]));
+	cv::Mat_<double> rot;
+	cv::Mat_<double> R = M.rowRange(0, 3).colRange(0, 3);
+	cv::Rodrigues(R, rot);
+	cv::Mat trans = M.rowRange(0, 3).col(3);
+
+	R.push_back(cv::Mat::zeros(1, 3, CV_64F));
+	cv::hconcat(R, cv::Mat::zeros(4, 1, CV_64F), R);
+	R(3, 3) = 1.0;
+
+	transformTool(image, R.inv());
 
 	return 0;
 }

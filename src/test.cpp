@@ -171,7 +171,7 @@ int main(int argc, char **argv)
 
 	// Decompose Homography
 	double fx = 391.096, fy = 463.098;
-	cv::Mat M = getExtrinsics(&det, fx, fy, fabs(det->p[0][0] - det->p[1][0]));
+	cv::Mat M = getExtrinsics(&det, fx, fx, fabs(det->p[0][0] - det->p[1][0]));
 	cv::Mat_<double> rot;
 	cv::Mat_<double> R = M.rowRange(0, 3).colRange(0, 3);
 	cv::Rodrigues(R, rot);
@@ -190,11 +190,7 @@ int main(int argc, char **argv)
 		.buf = 		grayim.data};
 
 	detections = apriltag_detector_detect(td, &im2);
-	if(!zarray_size(detections))
-	{
-		printf("Not detected in warped\n");
-		return -1;
-	}
+	if(!zarray_size(detections)) { printf("Not detected in warped\n"); return -1; }
 	zarray_get(detections, 0, &det);
 
 	// Measurement scale in x and y
@@ -208,14 +204,14 @@ int main(int argc, char **argv)
 	
 	// "Projection" Matrix
 	cv::Mat A1 = (cv::Mat_<double>(4,3) <<
-			1, 0, -imw/2,
-			0, 1, -imh/2,
+			1, 0, -imw/2.0,
+			0, 1, -imh/2.0,
 			0, 0,    0,
 			0, 0,    1);
 	// Intrinsics Matrix
 	cv::Mat K = (cv::Mat_<double>(3,4) <<
-			fx, 0, imw/2, 0,
-			0, fy, imh/2, 0,
+			fx, 0, imw/2.0, 0,
+			0, fy, imh/2.0, 0,
 			0, 0,   1, 0);
 	// translate
 	cv::Mat T = (cv::Mat_<double>(4, 4) <<

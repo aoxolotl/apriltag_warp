@@ -25,9 +25,9 @@ cv::Mat getExtrinsics(apriltag_detection **det, double fx, double fy,
 	cv::Mat_<double> F = cv::Mat::eye(3, 3, CV_64F);
 	F(1,1) = F(2,2) = -1;
 	h = F * h;
-	std::cout << "tagSize" << tagSize << std::endl;
+	std::cout << "tagSize " << tagSize << std::endl;
 	
-	bool openGLStyle = false;
+	bool openGLStyle = true;
 
 	cv::Mat_<double> M(4,4);
 	M(0,0) =  h(0,0) / fx;
@@ -45,7 +45,7 @@ cv::Mat getExtrinsics(apriltag_detection **det, double fx, double fy,
 	// geometric average.
 	double scale0 = sqrt(SQ(M(0,0)) + SQ(M(1,0)) + SQ(M(2,0)));
 	double scale1 = sqrt(SQ(M(0,1)) + SQ(M(1,1)) + SQ(M(2,1)));
-	double scale = sqrt(scale0*scale1);
+	double scale = sqrt(scale0 * scale1);
 
 	M *= 1.0/scale;
 
@@ -63,8 +63,8 @@ cv::Mat getExtrinsics(apriltag_detection **det, double fx, double fy,
 
 	// recover third rotation vector by crossproduct of the other two
 	// rotation vectors
-	cv::Vec<double, 3> a( M(0,0), M(1,0), M(2,0) );
-	cv::Vec<double, 3> b( M(0,1), M(1,1), M(2,1) );
+	cv::Vec<double, 3> a (M(0,0), M(1,0), M(2,0));
+	cv::Vec<double, 3> b (M(0,1), M(1,1), M(2,1));
 	cv::Vec<double, 3> ab = a.cross(b);
 
 	M(0,2) = ab[0];

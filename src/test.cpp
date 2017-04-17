@@ -169,13 +169,12 @@ int main(int argc, char **argv)
 	cv::Mat warp_im = cv::Mat::zeros(image.size(), image.type());
 	cv::warpPerspective(image, warp_im, H, image.size(), cv::WARP_INVERSE_MAP);
 
-	// Decompose Homography
+	// Decompose Homography into rotation and translation
 	double fx = 391.096, fy = 463.098;
-	cv::Mat M = getExtrinsics(&det, fx, fx, fabs(det->p[0][0] - det->p[1][0]));
-	cv::Mat_<double> rot;
-	cv::Mat_<double> R = M.rowRange(0, 3).colRange(0, 3);
-	cv::Rodrigues(R, rot);
-	cv::Mat trans = M.rowRange(0, 3).col(3);
+	double rot[9], trans[3];
+
+	getExtrinsics_old(det, fx, fx, rot, trans);
+	cv::Mat_<double> R = cv::Mat(3, 3, CV_64F, &rot);
 
 	R.push_back(cv::Mat::zeros(1, 3, CV_64F));
 	cv::hconcat(R, cv::Mat::zeros(4, 1, CV_64F), R);
@@ -223,9 +222,9 @@ int main(int argc, char **argv)
 	// overall transformation matrix
 	cv::Mat transfo = K * (T * (R * A1));
 
-	cv::warpPerspective(image, warp_im, transfo, cv::Size(imw, imh),
+	cv::warpPerspective(image, warp_im, transfo, image.size(),
 			cv::WARP_INVERSE_MAP);
-	//transformTool(image, transfo);
+	// transformTool(image, transfo);
 	cv::imwrite("rot_warp_im.png", warp_im);
 	return 0;
 }

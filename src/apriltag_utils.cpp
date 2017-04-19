@@ -25,7 +25,7 @@ cv::Mat getExtrinsics(apriltag_detection **det, double fx, double fy,
 	cv::Mat_<double> F = cv::Mat::eye(3, 3, CV_64F);
 	F(1,1) = F(2,2) = -1;
 	h = F * h;
-	std::cout << "tagSize" << tagSize << std::endl;
+	std::cout << "tagSize:" << tagSize << std::endl;
 	
 	bool openGLStyle = false;
 
@@ -47,11 +47,12 @@ cv::Mat getExtrinsics(apriltag_detection **det, double fx, double fy,
 	double scale1 = sqrt(SQ(M(0,1)) + SQ(M(1,1)) + SQ(M(2,1)));
 	double scale = sqrt(scale0*scale1);
 
-	M *= 1.0/scale;
+	M /= scale;
 
 	// recover sign of scale factor by noting that observations must
 	// occur in front of the camera.
-	if (M(2,3) > 0) {
+	if (M(2,3) > 0)
+	{
 		M *= -1;
 	}
 
@@ -106,7 +107,7 @@ cv::Mat getExtrinsics(apriltag_detection **det, double fx, double fy,
 	for (int i = 0; i < 3; i++) 
 	{
 		double scl = openGLStyle ? 1 : F(i,i);
-		M(i,3) *= scl * tagSize / 2;
+		M(i,3) = M(i,3) * scl * tagSize / 2.0;
 	}
 
 	return M;

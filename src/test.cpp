@@ -101,6 +101,50 @@ int transformTool(cv::Mat source, cv::Mat R1)
 	}
 }
 
+int warpUsingRot(cv::Mat image, cv::Mat M, int fx, int fy)
+{
+	int imh = image.rows;
+	int imw = image.cols;
+
+	cv::Mat_<double> R = M.rowRange(0, 3).colRange(0, 3);
+	cv::Mat trans = M.rowRange(0, 3).col(3);
+
+	R.push_back(cv::Mat::zeros(1, 3, CV_64F));
+	cv::hconcat(R, cv::Mat::zeros(4, 1, CV_64F), R);
+	R(3, 3) = 1.0;
+	
+	// Warp image using rotation
+	// "Projection" Matrix
+	cv::Mat A1 = (cv::Mat_<double>(4,3) <<
+			1, 0, -imw/2.0,
+			0, 1, -imh/2.0,
+			0, 0,    0,
+			0, 0,    1);
+	// Intrinsics Matrix
+	cv::Mat K = (cv::Mat_<double>(3,4) <<
+			fx, 0, imw/2.0, 0,
+			0, fy, imh/2.0, 0,
+			0, 0,   1, 0);
+	// translate
+	cv::Mat T = (cv::Mat_<double>(4, 4) <<
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, fx,
+			0, 0, 0, 1);
+
+	// overall transformation matrix
+	cv::Mat transfo = K * (T * (R * A1));
+
+	cv::Mat warp_im = cv::Mat::zeros(image.size(), image.type());
+	cv::warpPerspective(image, warp_im, transfo, cv::Size(imw, imh),
+			cv::WARP_INVERSE_MAP);
+	
+	//transformTool(image, transfo);
+	cv::imwrite("rot_warp_im.png", warp_im);
+	
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	if(argc < 2)
@@ -124,8 +168,6 @@ int main(int argc, char **argv)
 	// Grayscale for apriltag
 	cv::Mat grayim;
    	cv::cvtColor(image, grayim, cv::COLOR_BGR2GRAY);
-	int imh = grayim.rows;
-	int imw = grayim.cols;
 
 	// Refer: https://github.com/openmv/apriltag/blob/master/example/opencv_demo.cc#L114 
 	image_u8_t im = {
@@ -172,14 +214,8 @@ int main(int argc, char **argv)
 	// Decompose Homography
 	double fx = 391.096, fy = 463.098;
 	cv::Mat M = getExtrinsics(&det, fx, fx, fabs(det->p[0][0] - det->p[1][0]));
-	cv::Mat_<double> rot;
-	cv::Mat_<double> R = M.rowRange(0, 3).colRange(0, 3);
-	cv::Rodrigues(R, rot);
-	cv::Mat trans = M.rowRange(0, 3).col(3);
 
-	R.push_back(cv::Mat::zeros(1, 3, CV_64F));
-	cv::hconcat(R, cv::Mat::zeros(4, 1, CV_64F), R);
-	R(3, 3) = 1.0;
+	warpUsingRot(image, M, fx, fx);
 	
 	// Detect apriltag again for measurements
    	cv::cvtColor(warp_im, grayim, cv::COLOR_BGR2GRAY);
@@ -190,7 +226,12 @@ int main(int argc, char **argv)
 		.buf = 		grayim.data};
 
 	detections = apriltag_detector_detect(td, &im2);
-	if(!zarray_size(detections)) { printf("Not detected in warped\n"); return -1; }
+
+	if(!zarray_size(detections)) 
+	{ 
+		printf("Not detected in warped\n"); 
+		return -1; 
+	}
 	zarray_get(detections, 0, &det);
 
 	// Measurement scale in x and y
@@ -198,34 +239,7 @@ int main(int argc, char **argv)
 	double meas_y = AT_HEIGHT / fabs(det->p[0][1] - det->p[2][1]); 
 	printf("m_x:%lf, m_y:%lf\n", meas_x, meas_y);
 
-	// Write out warped image
 	cv::imwrite("warp_im.png", warp_im);
-	// Warp image using rotation
-	
-	// "Projection" Matrix
-	cv::Mat A1 = (cv::Mat_<double>(4,3) <<
-			1, 0, -imw/2.0,
-			0, 1, -imh/2.0,
-			0, 0,    0,
-			0, 0,    1);
-	// Intrinsics Matrix
-	cv::Mat K = (cv::Mat_<double>(3,4) <<
-			fx, 0, imw/2.0, 0,
-			0, fy, imh/2.0, 0,
-			0, 0,   1, 0);
-	// translate
-	cv::Mat T = (cv::Mat_<double>(4, 4) <<
-			1, 0, 0, 0,
-			0, 1, 0, 0,
-			0, 0, 1, 400,
-			0, 0, 0, 1);
 
-	// overall transformation matrix
-	cv::Mat transfo = K * (T * (R * A1));
-
-	cv::warpPerspective(image, warp_im, transfo, cv::Size(imw, imh),
-			cv::WARP_INVERSE_MAP);
-	//transformTool(image, transfo);
-	cv::imwrite("rot_warp_im.png", warp_im);
 	return 0;
 }

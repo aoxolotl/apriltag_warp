@@ -78,18 +78,26 @@ int main(int argc, char **argv)
     vector<AprilTags::TagDetection> detections = m_tagDetector->extractTags(grayim);
 
 	double fx = 391.096, fy = 463.098;
-    Eigen::Vector3d translation;
-    Eigen::Matrix3d rotation;
-    detections[0].getRelativeTranslationRotation(0.277, fx, fy, 
-			imw/2.0, imh/2.0, translation, rotation);
+	
 	//Eigen::Matrix4d T = 
 	//	detections[0].getRelativeTransform(0.277, 
 	//			fx, fy, imw/2.0, imh/2.0);
 
+    Eigen::Vector3d translation;
+    Eigen::Matrix3d rotation;
+    detections[0].getRelativeTranslationRotation(0.277, fx, fy, 
+			imw/2.0, imh/2.0, translation, rotation);
+    Eigen::Matrix3d F;
+    F <<
+      1, 0,  0,
+      0,  -1,  0,
+      0,  0,  1;
+    Eigen::Matrix3d fixed_rot = F*rotation;
+
 	cv::Mat_<double> R = cv::Mat::zeros(3, 3, CV_64F);
-	for(int i; i < 3; ++i)
-		for(int j; j < 3; ++j)
-			R(i, j) = rotation(i, j);
+	for(int i = 0; i < 3; ++i)
+		for(int j = 0; j < 3; ++j)
+			R(i, j) = fixed_rot(i, j);
 
 	std::cout << "rotation mat " << rotation << std::endl;
 	warpUsingRot(image, R, fx, fy);

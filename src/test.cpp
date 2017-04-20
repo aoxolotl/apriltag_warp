@@ -19,9 +19,9 @@ int warpUsingRot(cv::Mat image, cv::Mat_<double> R, int fx, int fy)
 	//cv::Mat_<double> R = M.rowRange(0, 3).colRange(0, 3);
 	//cv::Mat trans = M.rowRange(0, 3).col(3);
 
-	R.push_back(cv::Mat::zeros(1, 3, CV_64F));
-	cv::hconcat(R, cv::Mat::zeros(4, 1, CV_64F), R);
-	R(3, 3) = 1.0;
+//	R.push_back(cv::Mat::zeros(1, 3, CV_64F));
+//	cv::hconcat(R, cv::Mat::zeros(4, 1, CV_64F), R);
+//	R(3, 3) = 1.0;
 	
 	// Warp image using rotation
 	// "Projection" Matrix
@@ -31,10 +31,10 @@ int warpUsingRot(cv::Mat image, cv::Mat_<double> R, int fx, int fy)
 			0, 0,    0,
 			0, 0,    1);
 	// Intrinsics Matrix
-	cv::Mat K = (cv::Mat_<double>(3,4) <<
-			fx, 0, imw/2.0, 0,
-			0, fy, imh/2.0, 0,
-			0, 0,   1, 0);
+	cv::Mat K = (cv::Mat_<double>(3,3) <<
+			fx, 0, imw/2.0,
+			0, fy, imh/2.0,
+			0, 0,   1);
 	// translate
 	cv::Mat T = (cv::Mat_<double>(4, 4) <<
 			1, 0, 0, 0,
@@ -43,7 +43,7 @@ int warpUsingRot(cv::Mat image, cv::Mat_<double> R, int fx, int fy)
 			0, 0, 0, 1);
 
 	// overall transformation matrix
-	cv::Mat transfo = K * (T * (R * A1));
+	cv::Mat transfo = K * (R * K.inv());
 
 	cv::Mat warp_im = cv::Mat::zeros(image.size(), image.type());
 	cv::warpPerspective(image, warp_im, transfo, cv::Size(imw, imh),
@@ -89,8 +89,8 @@ int main(int argc, char **argv)
 			imw/2.0, imh/2.0, translation, rotation);
     Eigen::Matrix3d F;
     F <<
-      1, 0,  0,
-      0,  -1,  0,
+      -1, 0,  0,
+      0,  1,  0,
       0,  0,  1;
     Eigen::Matrix3d fixed_rot = F*rotation;
 
@@ -100,7 +100,7 @@ int main(int argc, char **argv)
 			R(i, j) = fixed_rot(i, j);
 
 	std::cout << "rotation mat " << rotation << std::endl;
-	warpUsingRot(image, R, fx, fy);
+	warpUsingRot(image, R.inv(), fx, fy);
 
 	return 0;
 }

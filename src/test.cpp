@@ -11,7 +11,7 @@
 #define AT_WIDTH 26
 #define AT_HEIGHT 26
 
-int warpUsingRot(cv::Mat image, cv::Mat_<double> R, int fx, int fy)
+int warpUsingRot(cv::Mat image, cv::Mat_<double> M, int fx, int fy)
 {
 	int imh = image.rows;
 	int imw = image.cols;
@@ -31,19 +31,19 @@ int warpUsingRot(cv::Mat image, cv::Mat_<double> R, int fx, int fy)
 			0, 0,    0,
 			0, 0,    1);
 	// Intrinsics Matrix
-	cv::Mat K = (cv::Mat_<double>(3,3) <<
-			fx, 0, imw/2.0,
-			0, fy, imh/2.0,
-			0, 0,   1);
+	cv::Mat K = (cv::Mat_<double>(3,4) <<
+			fx, 0, imw/2.0, 0,
+			0, fy, imh/2.0, 0,
+			0, 0,   1, 0);
 	// translate
 	cv::Mat T = (cv::Mat_<double>(4, 4) <<
 			1, 0, 0, 0,
-			0, 1, 0, 0,
+			0, -1, 0, 0,
 			0, 0, 1, fx,
 			0, 0, 0, 1);
 
 	// overall transformation matrix
-	cv::Mat transfo = K * (R * K.inv());
+	cv::Mat transfo = K * (T * (M * A1));
 
 	cv::Mat warp_im = cv::Mat::zeros(image.size(), image.type());
 	cv::warpPerspective(image, warp_im, transfo, cv::Size(imw, imh),
@@ -64,7 +64,8 @@ int main(int argc, char **argv)
 	} 
 	
 	// Initialize detector
-	AprilTags::TagDetector* m_tagDetector = new AprilTags::TagDetector(AprilTags::tagCodes36h11);
+	AprilTags::TagDetector* m_tagDetector 
+		= new AprilTags::TagDetector(AprilTags::tagCodes36h11);
 
 	cv::Mat image = cv::imread(argv[1]);
 	int imw = image.rows;
@@ -75,32 +76,39 @@ int main(int argc, char **argv)
    	cv::cvtColor(image, grayim, cv::COLOR_BGR2GRAY);
 
 	// Detect apriltag
-    vector<AprilTags::TagDetection> detections = m_tagDetector->extractTags(grayim);
+    vector<AprilTags::TagDetection> detections 
+		= m_tagDetector->extractTags(grayim);
 
 	double fx = 391.096, fy = 463.098;
 	
-	//Eigen::Matrix4d T = 
-	//	detections[0].getRelativeTransform(0.277, 
-	//			fx, fy, imw/2.0, imh/2.0);
+	Eigen::Matrix4d T = 
+		detections[0].getRelativeTransform(0.277, 
+				fx, fy, imw/2.0, imh/2.0);
 
-    Eigen::Vector3d translation;
-    Eigen::Matrix3d rotation;
-    detections[0].getRelativeTranslationRotation(0.277, fx, fy, 
-			imw/2.0, imh/2.0, translation, rotation);
-    Eigen::Matrix3d F;
-    F <<
-      -1, 0,  0,
-      0,  1,  0,
-      0,  0,  1;
-    Eigen::Matrix3d fixed_rot = F*rotation;
+    //Eigen::Vector3d translation;
+    //Eigen::Matrix3d rotation;
+    //detections[0].getRelativeTranslationRotation(0.277, fx, fy, 
+	//		imw/2.0, imh/2.0, translation, rotation);
+    //Eigen::Matrix3d F;
+    //F <<
+    //  -1, 0,  0,
+    //  0,  1,  0,
+    //  0,  0,  1;
+    //Eigen::Matrix3d fixed_rot = F*rotation;
 
-	cv::Mat_<double> R = cv::Mat::zeros(3, 3, CV_64F);
-	for(int i = 0; i < 3; ++i)
-		for(int j = 0; j < 3; ++j)
-			R(i, j) = fixed_rot(i, j);
+	//cv::Mat_<double> R = cv::Mat::zeros(3, 3, CV_64F);
+	//for(int i = 0; i < 3; ++i)
+	//	for(int j = 0; j < 3; ++j)
+	//		R(i, j) = fixed_rot(i, j);
 
-	std::cout << "rotation mat " << rotation << std::endl;
-	warpUsingRot(image, R.inv(), fx, fy);
+	//std::cout << "rotation mat " << rotation << std::endl;
+	
+	cv::Mat_<double> transform = cv::Mat::eye(4, 4, CV_64F);
+	for(int i = 0; i < 4; ++i)
+		for(int j = 0; j < 4; ++j)
+			transform(i, j) = T(i, j);
+	
+	warpUsingRot(image, transform, fx, fy);
 
 	return 0;
 }

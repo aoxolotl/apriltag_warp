@@ -9,6 +9,15 @@
 #define AT_WIDTH 26
 #define AT_HEIGHT 26
 
+void on_mouse(int e, int x ,int y, int d, void *ptr)
+{
+	if(e == CV_EVENT_LBUTTONDOWN)
+	{
+		std::vector<cv::Point> *p = (std::vector<cv::Point> *) ptr;
+		p->push_back(cv::Point(x, y));
+	}
+}
+
 int main(int argc, char **argv)
 {
 	if(argc < 2)
@@ -113,6 +122,20 @@ int main(int argc, char **argv)
 	double meas_x = AT_WIDTH / fabs(det->p[0][0] - det->p[1][0]);
 	double meas_y = AT_HEIGHT / fabs(det->p[0][1] - det->p[2][1]); 
 	printf("m_x:%lf, m_y:%lf\n", meas_x, meas_y);
+
+	std::vector<cv::Point> p;
+
+	cv::namedWindow("gaysex", CV_WINDOW_NORMAL);
+	cv::imshow("gaysex", warp_im);
+	cv::resizeWindow("gaysex", 1600, 900);
+	cv::setMouseCallback("gaysex", on_mouse, (void *)&p);
+	cv::waitKey(0);
+	cv::Point p1;
+	p1.x = fabs(p[1].x - p[0].x);
+	p1.y = fabs(p[1].y - p[0].y);
+
+	std::cout << p1.x * meas_x << " x "
+			  << p1.y * meas_y << std::endl;
 
 	//Write out warped image
 	cv::imwrite("warp_im.png", warp_im);

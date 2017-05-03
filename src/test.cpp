@@ -42,38 +42,53 @@ int main(int argc, char **argv)
 
 	// Detect apriltag
 	zarray_t *detections = apriltag_detector_detect(td, &im);
-	if(!zarray_size(detections))
+	int num_det = zarray_size(detections);
+	std::cout << "Detection count:" << num_det << std::endl;
+	if(!num_det)
 	{
 		printf("Not detected\n");
 		return -1;
 	}
 
 	apriltag_detection_t *det;
-	zarray_get(detections, 0, &det);
 
-	// Convert homography to Mat for warpPerspective
-	cv::Mat H = cv::Mat(3, 3, CV_64F, det->H->data);
+	cv::Mat H_av = cv::Mat::zeros(cv::Size(3, 3), CV_64F);
+	int i = 0;
+	for(i = 0; i < num_det; ++i)
+	{
+		zarray_get(detections, i, &det);
 
-	double t[9] = {
-		1, 0,	-det->c[0],
-		0, 1,	-det->c[1],
-		0, 0,	1};
-	cv::Mat Tr = cv::Mat(3,3, CV_64F, t); /**< Translation mat to get the H in image frame**/
-	
-	double sx = abs(det->p[0][0] - det->p[1][0]) / 2;
-	double sy = abs(det->p[0][1] - det->p[2][1]) / 2;
-	double s[9] = {
-		1/sx,	0, 		0,
-		0,		1/sy, 	0,
-		0, 		0, 		1};
-	cv::Mat Sc = cv::Mat(3, 3, CV_64F, s); /**< Scale factor to keep it in image scale**/
+		// Convert homography to Mat for warpPerspective
+		cv::Mat H = cv::Mat(3, 3, CV_64F, det->H->data);
 
-	H = H * Sc;
-	H = H * Tr;
+		double t[9] = {
+			1, 0,	-det->c[0],
+			0, 1,	-det->c[1],
+			0, 0,	1};
+		cv::Mat Tr = cv::Mat(3,3, CV_64F, t); /**< Translation mat to get the H in image frame**/
+
+		double sx = abs(det->p[0][0] - det->p[1][0]) / 2;
+		double sy = abs(det->p[0][1] - det->p[2][1]) / 2;
+		double s[9] = {
+			1/sx,	0, 		0,
+			0,		1/sy, 	0,
+			0, 		0, 		1};
+		cv::Mat Sc = cv::Mat(3, 3, CV_64F, s); /**< Scale factor to keep it in image scale**/
+
+		H = H * Sc;
+		H = H * Tr;
+
+		std::cout << H << std::endl;
+		std::cout << "" << std::endl;
+		H_av += H;
+	}
+
+	H_av /= i;
+	std::cout << H_av << std::endl;
 
 	// Warp image
 	cv::Mat warp_im = cv::Mat::zeros(image.size(), image.type());
-	cv::warpPerspective(image, warp_im, H, image.size(), cv::WARP_INVERSE_MAP);
+	cv::warpPerspective(image, warp_im, H_av, image.size(), cv::WARP_INVERSE_MAP);
 	
 	// Detect apriltag again for measurements
    	cv::cvtColor(warp_im, grayim, cv::COLOR_BGR2GRAY);

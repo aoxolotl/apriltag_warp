@@ -53,6 +53,8 @@ int main(int argc, char **argv)
 	apriltag_detection_t *det;
 
 	cv::Mat H_av = cv::Mat::zeros(cv::Size(3, 3), CV_64F);
+	cv::Mat Tr_av = cv::Mat::zeros(cv::Size(3, 3), CV_64F);
+	double sx_av = 0, sy_av = 0;
 	int i = 0;
 	for(i = 0; i < num_det; ++i)
 	{
@@ -67,23 +69,29 @@ int main(int argc, char **argv)
 			0, 0,	1};
 		cv::Mat Tr = cv::Mat(3,3, CV_64F, t); /**< Translation mat to get the H in image frame**/
 
-		double sx = abs(det->p[0][0] - det->p[1][0]) / 2;
-		double sy = abs(det->p[0][1] - det->p[2][1]) / 2;
-		double s[9] = {
-			1/sx,	0, 		0,
-			0,		1/sy, 	0,
-			0, 		0, 		1};
-		cv::Mat Sc = cv::Mat(3, 3, CV_64F, s); /**< Scale factor to keep it in image scale**/
-
-		H = H * Sc;
-		H = H * Tr;
+		sx_av += abs(det->p[0][0] - det->p[1][0]) / 2;
+		sy_av += abs(det->p[0][1] - det->p[2][1]) / 2;
 
 		std::cout << H << std::endl;
 		std::cout << "" << std::endl;
+
+		Tr_av += Tr;
 		H_av += H;
 	}
 
+	sx_av /= i;
+	sy_av /= i;
+	Tr_av /= i;
 	H_av /= i;
+
+	double s[9] = {
+		1/sx_av,	0, 		0,
+		0,		1/sy_av, 	0,
+		0, 		0, 		1};
+	cv::Mat Sc_av = cv::Mat(3, 3, CV_64F, s); /**< Scale factor to keep it in image scale**/
+
+	H_av *= Sc_av;
+	H_av *= Tr_av;
 	std::cout << H_av << std::endl;
 
 	// Warp image

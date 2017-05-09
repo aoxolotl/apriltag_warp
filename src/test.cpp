@@ -6,20 +6,22 @@
 
 #define EPS 1e-3
 
-void on_mouse(int e, int x, int y, int d, void *pt)
+void on_mouse(int e, int x, int y, int d, void *ptr)
 {
-	cv::Point *p = (cv::Point *)pt;
-	p->x = x;
-	p->y = y;
+	if(e == CV_EVENT_LBUTTONDOWN)
+	{
+		std::vector<cv::Point> *p = (std::vector<cv::Point> *) ptr;
+		p->push_back(cv::Point(x, y));
+	}
 }
 
 /**
- * @brief Get vanishing points formed by two lines from 4 points
+ * @brief Get intersection points formed by two lines from 4 points
  * @params a1, a2 points from first tag array of x, y
  * @params b1, b2 points from second tag array of x, y
  * @params vp_out ouput of x and y 
  */
-void get_vanishing_points(double *a1, double *a2, double *b1, double *b2, double *vp_out)
+void get_intersection_points(double *a1, double *a2, double *b1, double *b2, double *vp_out)
 {
 	double slope1 = (a1[1] - a2[1]) / 
 		(((a1[0] - a2[0]) != 0) ? (a1[0] - a2[0]) : EPS);
@@ -76,43 +78,66 @@ int main(int argc, char **argv)
 	double vph[2], vpv[2];
 	double vph2[2], vpv2[2];
 	// Horizontal vp
-	get_vanishing_points(dets[0].p[0], dets[0].p[1], 
+	get_intersection_points(dets[0].p[0], dets[0].p[1], 
 			dets[1].p[0], dets[1].p[1], vph);
 
 	// Vertical vp
-	get_vanishing_points(dets[0].p[0], dets[0].p[3], 
+	get_intersection_points(dets[0].p[0], dets[0].p[3], 
 			dets[1].p[0], dets[1].p[3], vpv);
 
 	printf("H: %lf, %lf V:%lf, %lf\n", vph[0], vph[1], 
 			vpv[0], vpv[1]);
 	
 	// Horizontal vp2
-	get_vanishing_points(dets[0].p[2], dets[0].p[3], 
+	get_intersection_points(dets[0].p[2], dets[0].p[3], 
 			dets[1].p[2], dets[1].p[3], vph2);
 
 	// Vertical vp2
-	get_vanishing_points(dets[0].p[1], dets[0].p[2], 
+	get_intersection_points(dets[0].p[1], dets[0].p[2], 
 			dets[1].p[1], dets[1].p[2], vpv2);
 
 	printf("H2: %lf, %lf V2:%lf, %lf\n", vph2[0], vph2[1], 
 			vpv2[0], vpv2[1]);
 
-	cv::Point crop_pts[2];
-	crop_pts[0].x = dets[0].p[0][0];
-	crop_pts[0].y = dets[0].p[0][1];
-	crop_pts[1].x = 380;
-	crop_pts[1].y = 200;
-	//// Lines from vanishing points to top-left and bottom-right corner
+	// Average of two vps
+	double vph_av[2], vpv_av[2];
+	vph_av[0] = (vph[0] + vph2[0]) / 2.0;
+	vph_av[1] = (vph[1] + vph2[1]) / 2.0;
+	vpv_av[0] = (vpv[0] + vpv2[0]) / 2.0;
+	vpv_av[1] = (vpv[1] + vpv2[1]) / 2.0;
 
-	int colour_change = 70 + 70;
+	// Get user input
+	std::vector<cv::Point> p;
+	
+	cv::namedWindow("warppts", CV_WINDOW_NORMAL);
+	cv::imshow("warppts", image);
+	cv::resizeWindow("warppts", 1600, 900);
+	cv::setMouseCallback("warppts", on_mouse, (void *)&p);
+	cv::waitKey(0);
 
-	// Draw lines to see how parallel they are
-	cv::line(image, cv::Point((int ) round(vph[0]), (int ) round(vph[1])), crop_pts[0], cv::Scalar(0, colour_change, colour_change), 3);
-	cv::line(image, cv::Point((int ) round(vph[0]), (int ) round(vph[1])), crop_pts[1], cv::Scalar(0, colour_change, colour_change), 3);
-	//cv::line(image, cv::Point((int ) round(v2px_v), (int ) round(vp2y_v)), crop_pts[0], cv::Scalar(0, 255, 255), 3);
-	cv::line(image, cv::Point((int ) round(vpv[0]), (int ) round(vpv[1])), crop_pts[1], cv::Scalar(255, 255, 0), 3);
+	if(p.size() == 2)
+	{
+		// top-left, bottom-right convert to array
+		double tl[2] = {p[0].x, p[0].y};
+		double br[2] = {p[1].x, p[1].y};
+		// top-right and bottom-left from intersections
+		double tr[2], bl[2];
+		get_intersection_points(tl, vph_av, br, vpv_av, tr);
+		get_intersection_points(tl, vpv_av, br, vph_av, bl);
 
+		std::cout << "top-left:" << tl[0] << ", " << tl[1]
+			<< "  top-right:" << tr[0] << ", " << tr[1]
+			<< "  bottom-right:" << br[0] << ", " << br[1]
+			<< "  bottom-left:" << bl[0] << ", " << bl[1]
+			<< std::endl;
+
+
+		cv::line(image, p[0], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
+		cv::line(image, p[1], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
+		cv::line(image, p[0], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
+		cv::line(image, p[1], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
+
+	}
 	cv::imwrite("Crop.png", image);
-
 	return 0;
 }

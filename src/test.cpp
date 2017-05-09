@@ -131,13 +131,30 @@ int main(int argc, char **argv)
 			<< "  bottom-left:" << bl[0] << ", " << bl[1]
 			<< std::endl;
 
+	//	cv::line(image, p[0], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
+	//	cv::line(image, p[1], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
+	//	cv::line(image, p[0], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
+	//	cv::line(image, p[1], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
 
-		cv::line(image, p[0], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
-		cv::line(image, p[1], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
-		cv::line(image, p[0], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
-		cv::line(image, p[1], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
+		cv::Mat M;
+		cv::Point2f src[4], dst[4];
+		src[0] = cv::Point2f(tl[0], tl[1]);
+		src[1] = cv::Point2f(tr[0], tr[1]);
+		src[2] = cv::Point2f(br[0], br[1]);
+		src[3] = cv::Point2f(bl[0], bl[1]);
 
+		dst[0] = cv::Point2f(0.0, 0.0);
+		dst[1] = cv::Point2f(image.cols, 0.0);
+		dst[2] = cv::Point2f(image.cols, image.rows);
+		dst[3] = cv::Point2f(0.0, image.rows);
+
+		M = cv::getPerspectiveTransform(src, dst);
+		std::cout << M << std::endl;
+
+		cv::Mat warp_im;
+		cv::warpPerspective(image, warp_im, M, cv::Size(image.cols, image.rows));
+
+		cv::imwrite("Crop.png", warp_im);
 	}
-	cv::imwrite("Crop.png", image);
 	return 0;
 }

@@ -13,6 +13,29 @@ void on_mouse(int e, int x, int y, int d, void *pt)
 	p->y = y;
 }
 
+/**
+ * @brief Get vanishing points formed by two lines from 4 points
+ * @params a1, a2 points from first tag array of x, y
+ * @params b1, b2 points from second tag array of x, y
+ * @params vp_out ouput of x and y 
+ */
+void get_vanishing_points(double *a1, double *a2, double *b1, double *b2, double *vp_out)
+{
+	double slope1 = (a1[1] - a2[1]) / 
+		(((a1[0] - a2[0]) != 0) ? (a1[0] - a2[0]) : EPS);
+
+	double slope2 = (b1[1] - b2[1]) / 
+		(((b1[0] - b2[0]) != 0) ? (b1[0] - b2[0]) : EPS);
+
+	// Horizontal vp
+	double vpx_h = b1[1] - a1[1] + (slope1 * a1[0]) - (slope2 * b1[0]);
+	vpx_h /= (slope1 - slope2);
+	double vpy_h = (slope1 * (vpx_h - a1[0])) + a1[1];
+
+	vp_out[0] = vpx_h;
+	vp_out[1] = vpy_h;
+}
+
 int main(int argc, char **argv)
 {
 	if(argc < 2)
@@ -50,43 +73,44 @@ int main(int argc, char **argv)
 		dets[d] = *det;
 	}
 		
-	double slope1 = (dets[0].p[0][1] - dets[0].p[1][1]) / 
-		(((dets[0].p[0][0] - dets[0].p[1][0]) != 0) ? (dets[0].p[0][0] - dets[0].p[1][0]) : EPS);
-
-	double slope2 = (dets[1].p[0][1] - dets[1].p[1][1]) / 
-		(((dets[1].p[0][0] - dets[1].p[1][0]) != 0) ? (dets[1].p[0][0] - dets[1].p[1][0]) : EPS);
-
-	double slope3 = (dets[0].p[0][1] - dets[0].p[3][1]) / 
-		(((dets[0].p[0][0] - dets[0].p[3][0]) != 0) ? (dets[0].p[0][0] - dets[0].p[3][0]) : EPS);
-
-	double slope4 = (dets[1].p[0][1] - dets[1].p[3][1]) / 
-		(((dets[1].p[0][0] - dets[1].p[3][0]) != 0) ? (dets[1].p[0][0] - dets[1].p[3][0]) : EPS);
-
+	double vph[2], vpv[2];
+	double vph2[2], vpv2[2];
 	// Horizontal vp
-	double vpx_h = dets[1].p[0][1] - dets[0].p[0][1] + (slope1 * dets[0].p[0][0]) - (slope2 * dets[1].p[0][0]);
-	vpx_h /= (slope1 - slope2);
-	double vpy_h = (slope1 * (vpx_h - dets[0].p[0][0])) + dets[0].p[0][1];
+	get_vanishing_points(dets[0].p[0], dets[0].p[1], 
+			dets[1].p[0], dets[1].p[1], vph);
 
-	// Vertical v3
-	double vpx_v = dets[1].p[0][1] - dets[0].p[0][1] + (slope3 * dets[0].p[0][0]) - (slope4 * dets[1].p[0][0]);
-	vpx_v /= (slope3 - slope4);
-	double vpy_v = (slope3 * (vpx_v - dets[0].p[0][0])) + dets[0].p[0][1];
+	// Vertical vp
+	get_vanishing_points(dets[0].p[0], dets[0].p[3], 
+			dets[1].p[0], dets[1].p[3], vpv);
 
-	printf("H: %lf, %lf V:%lf, %lf\n", vpx_h, vpy_h, vpx_v, vpy_v);
+	printf("H: %lf, %lf V:%lf, %lf\n", vph[0], vph[1], 
+			vpv[0], vpv[1]);
+	
+	// Horizontal vp2
+	get_vanishing_points(dets[0].p[2], dets[0].p[3], 
+			dets[1].p[2], dets[1].p[3], vph2);
+
+	// Vertical vp2
+	get_vanishing_points(dets[0].p[1], dets[0].p[2], 
+			dets[1].p[1], dets[1].p[2], vpv2);
+
+	printf("H2: %lf, %lf V2:%lf, %lf\n", vph2[0], vph2[1], 
+			vpv2[0], vpv2[1]);
 
 	cv::Point crop_pts[2];
 	crop_pts[0].x = dets[0].p[0][0];
 	crop_pts[0].y = dets[0].p[0][1];
-	crop_pts[1].x = 2808;
-	crop_pts[1].y = 100;
+	crop_pts[1].x = 380;
+	crop_pts[1].y = 200;
 	//// Lines from vanishing points to top-left and bottom-right corner
 
 	int colour_change = 70 + 70;
 
-	cv::line(image, cv::Point((int ) round(vpx_h), (int ) round(vpy_h)), crop_pts[0], cv::Scalar(0, colour_change, colour_change), 3);
-	cv::line(image, cv::Point((int ) round(vpx_h), (int ) round(vpy_h)), crop_pts[1], cv::Scalar(0, colour_change, colour_change), 3);
-	//cv::line(image, cv::Point((int ) round(vpx_v), (int ) round(vpy_v)), crop_pts[0], cv::Scalar(0, 255, 255), 3);
-	cv::line(image, cv::Point((int ) round(vpx_v), (int ) round(vpy_v)), crop_pts[1], cv::Scalar(255, 255, 0), 3);
+	// Draw lines to see how parallel they are
+	cv::line(image, cv::Point((int ) round(vph[0]), (int ) round(vph[1])), crop_pts[0], cv::Scalar(0, colour_change, colour_change), 3);
+	cv::line(image, cv::Point((int ) round(vph[0]), (int ) round(vph[1])), crop_pts[1], cv::Scalar(0, colour_change, colour_change), 3);
+	//cv::line(image, cv::Point((int ) round(v2px_v), (int ) round(vp2y_v)), crop_pts[0], cv::Scalar(0, 255, 255), 3);
+	cv::line(image, cv::Point((int ) round(vpv[0]), (int ) round(vpv[1])), crop_pts[1], cv::Scalar(255, 255, 0), 3);
 
 	cv::imwrite("Crop.png", image);
 

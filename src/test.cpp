@@ -6,6 +6,7 @@
 
 #define EPS 1e-3
 
+
 void on_mouse(int e, int x, int y, int d, void *ptr)
 {
 	if(e == CV_EVENT_LBUTTONDOWN)
@@ -66,10 +67,10 @@ int main(int argc, char **argv)
 		printf("Num det:%d\n", num_det);
 
 	apriltag_detection_t dets[2];
+	apriltag_detection_t *det;
 
 	for(int d = 0; d < num_det; ++d)
 	{
-		apriltag_detection_t *det;
 
 		zarray_get(detections, d, &det);
 		dets[d] = *det;
@@ -115,46 +116,66 @@ int main(int argc, char **argv)
 	cv::setMouseCallback("warppts", on_mouse, (void *)&p);
 	cv::waitKey(0);
 
-	if(p.size() == 2)
+	if(p.size() != 2)
 	{
-		// top-left, bottom-right convert to array
-		double tl[2] = {p[0].x, p[0].y};
-		double br[2] = {p[1].x, p[1].y};
-		// top-right and bottom-left from intersections
-		double tr[2], bl[2];
-		get_intersection_points(tl, vph_av, br, vpv_av, tr);
-		get_intersection_points(tl, vpv_av, br, vph_av, bl);
-
-		std::cout << "top-left:" << tl[0] << ", " << tl[1]
-			<< "  top-right:" << tr[0] << ", " << tr[1]
-			<< "  bottom-right:" << br[0] << ", " << br[1]
-			<< "  bottom-left:" << bl[0] << ", " << bl[1]
-			<< std::endl;
-
-	//	cv::line(image, p[0], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
-	//	cv::line(image, p[1], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
-	//	cv::line(image, p[0], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
-	//	cv::line(image, p[1], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
-
-		cv::Mat M;
-		cv::Point2f src[4], dst[4];
-		src[0] = cv::Point2f(tl[0], tl[1]);
-		src[1] = cv::Point2f(tr[0], tr[1]);
-		src[2] = cv::Point2f(br[0], br[1]);
-		src[3] = cv::Point2f(bl[0], bl[1]);
-
-		dst[0] = cv::Point2f(0.0, 0.0);
-		dst[1] = cv::Point2f(image.cols, 0.0);
-		dst[2] = cv::Point2f(image.cols, image.rows);
-		dst[3] = cv::Point2f(0.0, image.rows);
-
-		M = cv::getPerspectiveTransform(src, dst);
-		std::cout << M << std::endl;
-
-		cv::Mat warp_im;
-		cv::warpPerspective(image, warp_im, M, cv::Size(image.cols, image.rows));
-
-		cv::imwrite("Crop.png", warp_im);
+		printf("Exactly 2 points to mark a region\n");
+		return -1;
 	}
+	// top-left, bottom-right convert to array
+	double tl[2] = {p[0].x, p[0].y};
+	double br[2] = {p[1].x, p[1].y};
+	// top-right and bottom-left from intersections
+	double tr[2], bl[2]; get_intersection_points(tl, vph_av, br, vpv_av, tr); get_intersection_points(tl, vpv_av, br, vph_av, bl);
+
+	std::cout << "top-left:" << tl[0] << ", " << tl[1]
+		<< "  top-right:" << tr[0] << ", " << tr[1]
+		<< "  bottom-right:" << br[0] << ", " << br[1]
+		<< "  bottom-left:" << bl[0] << ", " << bl[1]
+		<< std::endl;
+
+	cv::line(image, p[0], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
+	cv::line(image, p[1], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
+	cv::line(image, p[0], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
+	cv::line(image, p[1], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
+
+	cv::Mat M;
+	cv::Point2f src[4], dst[4];
+	src[0] = cv::Point2f(tl[0], tl[1]);
+	src[1] = cv::Point2f(tr[0], tr[1]);
+	src[2] = cv::Point2f(br[0], br[1]);
+	src[3] = cv::Point2f(bl[0], bl[1]);
+
+	dst[0] = cv::Point2f(0.0, 0.0);
+	dst[1] = cv::Point2f(image.cols, 0.0);
+	dst[2] = cv::Point2f(image.cols, image.rows);
+	dst[3] = cv::Point2f(0.0, image.rows);
+
+	M = cv::getPerspectiveTransform(src, dst);
+	std::cout << M << std::endl;
+
+	cv::Mat warp_image;
+	cv::warpPerspective(image, warp_image, M, 
+			cv::Size(image.cols, image.rows));
+
+	image_u8 warp_im ={
+		.width = warp_image.cols,
+		.height = warp_image.rows,
+		.stride = warp_image.cols,
+		.buf = warp_image.data};
+
+	zarray_get(detections, 0, &det);
+	// Measurement scale in x and y
+	double tag_width = 16.2;
+	double tag_height = 16.2;
+
+	double meas_x = tag_width / 
+		fabs(det->p[0][0] - det->p[1][0]);
+	double meas_y = tag_height / 
+		fabs(det->p[0][1] - det->p[2][1]); 
+	printf("width:%lf, height:%lf\n",
+		   	warp_image.cols * meas_x, warp_image.rows * meas_y);
+
+	cv::imwrite("Crop.png", warp_image);
+	
 	return 0;
 }

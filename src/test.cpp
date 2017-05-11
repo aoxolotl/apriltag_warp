@@ -156,26 +156,27 @@ int main(int argc, char **argv)
 	cv::Mat warp_image;
 	cv::warpPerspective(image, warp_image, M, 
 			cv::Size(image.cols, image.rows));
+	cv::imwrite("Crop.pgm", warp_image);
 
-	image_u8 warp_im ={
-		.width = warp_image.cols,
-		.height = warp_image.rows,
-		.stride = warp_image.cols,
-		.buf = warp_image.data};
+	image_u8_t *warp_im = image_u8_create_from_pnm("Crop.pgm");
 
-	zarray_get(detections, 0, &det);
+	detections = apriltag_detector_detect(td, warp_im);
+	if(zarray_size(detections) <= 0)
+	{
+		printf("Not detected in warped\n");
+		return -1;
+	}
+	zarray_get(detections, 1, &det);
 	// Measurement scale in x and y
-	double tag_width = 16.2;
-	double tag_height = 16.2;
+	double tag_width = 22.7;
+	double tag_height = 22.7;
 
 	double meas_x = tag_width / 
 		fabs(det->p[0][0] - det->p[1][0]);
 	double meas_y = tag_height / 
 		fabs(det->p[0][1] - det->p[2][1]); 
 	printf("width:%lf, height:%lf\n",
-		   	warp_image.cols * meas_x, warp_image.rows * meas_y);
-
-	cv::imwrite("Crop.png", warp_image);
+		   	warp_im->width * meas_x, warp_im->height * meas_y);
 	
 	return 0;
 }

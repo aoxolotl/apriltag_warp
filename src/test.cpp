@@ -62,7 +62,10 @@ int main(int argc, char **argv)
 	
 	int num_det = zarray_size(detections);
 	if(!num_det)
+	{
 		printf("Not detected\n");
+		return -1;
+	}
 	else
 		printf("Num det:%d\n", num_det);
 
@@ -133,10 +136,13 @@ int main(int argc, char **argv)
 		<< "  bottom-left:" << bl[0] << ", " << bl[1]
 		<< std::endl;
 
-	cv::line(image, p[0], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
-	cv::line(image, p[1], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
-	cv::line(image, p[0], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
-	cv::line(image, p[1], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
+	//cv::line(image, p[0], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
+	//cv::line(image, p[1], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
+	//cv::line(image, p[0], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
+	//cv::line(image, p[1], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
+	cv::circle(image, p[0], 2, cv::Scalar(0, 255, 0));
+	cv::circle(image, p[1], 2, cv::Scalar(0, 255, 0));
+	cv::imwrite("points.png", image);
 
 	cv::Mat M;
 	cv::Point2f src[4], dst[4];
@@ -161,22 +167,23 @@ int main(int argc, char **argv)
 	image_u8_t *warp_im = image_u8_create_from_pnm("Crop.pgm");
 
 	detections = apriltag_detector_detect(td, warp_im);
-	if(zarray_size(detections) <= 0)
+	num_det = zarray_size(detections);
+	if(!num_det)
 	{
 		printf("Not detected in warped\n");
 		return -1;
 	}
+
 	zarray_get(detections, 1, &det);
 	// Measurement scale in x and y
 	double tag_width = 22.7;
-	double tag_height = 22.7;
 
 	double meas_x = tag_width / 
 		fabs(det->p[0][0] - det->p[1][0]);
-	double meas_y = tag_height / 
+	double meas_y = tag_width / 
 		fabs(det->p[0][1] - det->p[2][1]); 
 	printf("width:%lf, height:%lf\n",
-		   	warp_im->width * meas_x, warp_im->height * meas_y);
-	
+			warp_im->width * meas_x, warp_im->height * meas_y);
+
 	return 0;
 }

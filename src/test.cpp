@@ -128,7 +128,11 @@ int main(int argc, char **argv)
 	double tl[2] = {p[0].x, p[0].y};
 	double br[2] = {p[1].x, p[1].y};
 	// top-right and bottom-left from intersections
-	double tr[2], bl[2]; get_intersection_points(tl, vph_av, br, vpv_av, tr); get_intersection_points(tl, vpv_av, br, vph_av, bl);
+	double tr[2], bl[2]; 
+	
+	get_intersection_points(tl, vph_av, br, vpv_av, tr); 
+	
+	get_intersection_points(tl, vpv_av, br, vph_av, bl);
 
 	std::cout << "top-left:" << tl[0] << ", " << tl[1]
 		<< "  top-right:" << tr[0] << ", " << tr[1]
@@ -136,10 +140,6 @@ int main(int argc, char **argv)
 		<< "  bottom-left:" << bl[0] << ", " << bl[1]
 		<< std::endl;
 
-	//cv::line(image, p[0], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
-	//cv::line(image, p[1], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
-	//cv::line(image, p[0], cv::Point((int ) bl[0], (int ) bl[1]), cv::Scalar(0, 255, 255), 3);
-	//cv::line(image, p[1], cv::Point((int ) tr[0], (int ) tr[1]), cv::Scalar(0, 255, 255), 3);
 	cv::circle(image, p[0], 2, cv::Scalar(0, 255, 0));
 	cv::circle(image, p[1], 2, cv::Scalar(0, 255, 0));
 	cv::imwrite("points.png", image);
@@ -184,6 +184,9 @@ int main(int argc, char **argv)
 		fabs(det->p[0][1] - det->p[2][1]); 
 	printf("width:%lf, height:%lf\n",
 			warp_im->width * meas_x, warp_im->height * meas_y);
+
+	apriltag_detections_destroy(detections);
+	timeprofile_display(td->tp);
 
 	return 0;
 }

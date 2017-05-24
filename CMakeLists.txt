@@ -11,6 +11,7 @@ find_package(OpenCV REQUIRED)
 include_directories("${PROJECT_SOURCE_DIR}/include")
 
 link_directories("${PROJECT_SOURCE_DIR}/lib")
+link_directories("/home/adwait/Documents/Projects/apriltag/bin")
 
 #add sources
 file(GLOB SOURCES "./src/*.cpp")

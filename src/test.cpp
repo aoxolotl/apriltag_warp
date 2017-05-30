@@ -74,16 +74,25 @@ int main(int argc, char **argv)
 	// Warp image
 	cv::Mat warp_im = cv::Mat::zeros(image.size(), image.type());
 	cv::warpPerspective(image, warp_im, H, image.size(), cv::WARP_INVERSE_MAP);
+
+	// TODO: Add the size of the clip as a configurable param
+	cv::Mat clip_im = warp_im(cv::Rect((int) det->c[0] - 192, (int) det->c[1] - 192, 192 * 2, 192 * 2));
 	
 	// Detect apriltag again for measurements
-   	cv::cvtColor(warp_im, grayim, cv::COLOR_BGR2GRAY);
+   	cv::cvtColor(clip_im, clip_im, cv::COLOR_BGR2GRAY);
 	image_u8_t im2 = {
-		.width =	grayim.cols,
-		.height =	grayim.rows,
-		.stride =	grayim.cols,
-		.buf = 		grayim.data};
+		.width =	clip_im.cols,
+		.height =	clip_im.rows,
+		.stride =	clip_im.cols,
+		.buf = 		clip_im.data};
 
 	detections = apriltag_detector_detect(td, &im2);
+	if(!zarray_size(detections))
+	{
+		printf("Not detected in warped\n");
+		return -1;
+	}
+
 	zarray_get(detections, 0, &det);
 
 	// Measurement scale in x and y

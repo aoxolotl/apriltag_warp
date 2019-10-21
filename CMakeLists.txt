@@ -15,6 +15,6 @@ link_directories("${PROJECT_SOURCE_DIR}/lib")
 #add sources
 file(GLOB SOURCES "./src/*.cpp")
 
-add_executable(apriltag_det ${SOURCES})
+add_executable(apriltag_warp ${SOURCES})
 
-target_link_libraries(apriltag_det libapriltag.a m pthread ${OpenCV_LIBS})
+target_link_libraries(apriltag_warp libapriltag.a m pthread ${OpenCV_LIBS})
